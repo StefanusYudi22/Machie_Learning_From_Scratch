@@ -52,10 +52,13 @@ class NearestNeighbor:
             np.array (k, n_neighbors): matrix of neighbors data
         """
         # Check for input dimension
+
+        # alter the input dimension if X_input dimension is like (m,)
         try :
             X_input.shape[1]
-        except IndexError as exc:
-            raise IndexError("input dimension is missing one dimension, try predict([[data]])") from exc
+        except IndexError:
+            X_input = X_input.reshape(-1,1)
+
         assert self.X_dim == X_input.shape[1], "input dimension for X differ with registered data"
 
         # Create the container for distance matrix
@@ -86,12 +89,24 @@ class NearestNeighbor:
             X (np.array) (m,n): Array for input
             y (np.array) (1,m): Array for output 
         """
-        # create the design matrix
-        self.X_model = np.array(X)
-        self.y_model = np.array(y)
+        try:
+        # check for data train with incomplete dimension (m,)
+            np.array(X).shape[1]
+            # create the design matrix
+            self.X_model = np.array(X)
+            self.y_model = np.array(y)
+        except IndexError:
+        # create addtional dimension for registered data with incomplete dimension
+            self.X_model = np.array(X).reshape(-1,1)
+            self.y_model = np.array(y)
 
         # create input criteria
-        self.X_dim = self.X_model.shape[1]
+        try:
+            # take the count feature n from registered matrix size (m,n)
+            self.X_dim = self.X_model.shape[1]
+        except IndexError:
+            # set input criteria to 1 if matrix size is (m,)
+            self.X_dim = 1
 
     def get_weights(self, distance_matrix : np.array) -> np.array:
         """Calculate weights from distance data
