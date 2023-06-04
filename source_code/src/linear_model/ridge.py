@@ -1,16 +1,16 @@
-"""Base class for linear model"""
-
 import numpy as np
 
-class LinearRegression:
-    """Linear Regression Class
-    """
+from .base import LinearRegression
+
+class Ridge(LinearRegression):
+
     def __init__(self,
                  fit_intercept : str = True,
-                 optimizer : str ="ols",
+                 optimizer : str = "ols",
                  learning_rate : float = 1e-5,
-                 num_iters : int = 10000):
-        """Class initialization for Linear Regression
+                 num_iters : int = 10000,
+                 alpha : float = 1.0) :
+        """Class initialization for Ridge Regression
 
         Args:
             fit_intercept (str, optional):
@@ -26,11 +26,17 @@ class LinearRegression:
             num_iters (int, optional):
                 Number of iterations until gradient-descent finish, used if gradient-descent
                 used as optimization algoritm. Defaults to 10000.
+
+            alpha (float, optional): 
+                Ridge regularization parameter. Defaults to 1.0.
         """
-        self.fit_intercept = fit_intercept
-        self.optimizer = optimizer
-        self.learning_rate = learning_rate
-        self.num_iters = num_iters
+        super().__init__(
+            fit_intercept = fit_intercept,
+            optimizer = optimizer,
+            learning_rate = learning_rate,
+            num_iters = num_iters
+        )
+        self.alpha = alpha
 
     def fit(self,
             X : np.array,
@@ -72,27 +78,6 @@ class LinearRegression:
         self.coef_ = theta[:n_features]
         self.intercept_ = theta[-1]
 
-    def predict(self,
-                X : np.array) -> np.array :
-        """Predict data input using calculated model parameter
-
-        Args:
-            X (np.array) (k,n):
-                input data for prediction with k number of data point
-                and n feature
-        Returns:
-            np.array (k, ):
-                result of the predict function whit k number of 
-                prediction
-        """
-        # prepare data
-        X = np.array(X)
-
-        # calculate prediction
-        y_pred = np.dot(X,self.coef_) + self.intercept_
-
-        return y_pred
-    
     def ols_solution(self,
                      X : np.array,
                      y : np.array) -> np.array :
@@ -119,11 +104,15 @@ class LinearRegression:
         if self.fit_intercept:
             # Create Design Matrix
             A = np.column_stack((X, np.ones(n_features)))
+            alpha_I = self.alpha * np.identity(n_features+1)
+            alpha_I[-1,-1] = 0.0
+
         # els if the model don;t require intercept
         else :
             A = X
+            alpha_I = self.alpha * np.identity(n_features)
 
-        return np.linalg.pinv(A.T @ A) @ A.T @ y
+        return np.linalg.pinv((A.T @ A) + alpha_I) @ A.T @ y
     
     def gradient_descent(self,
                          X : np.array,
@@ -165,7 +154,7 @@ class LinearRegression:
             err = X@w + b - y
 
             # calculate and update gain
-            dj_dw = (1/len(X))*np.sum(X*err.reshape(-1,1), axis=0)
+            dj_dw = (1/len(X))*np.sum(X*err.reshape(-1,1), axis=0) + (self.alpha/len(X))*w
             w = w - alpha * dj_dw
 
             # If model require intercept
@@ -176,7 +165,7 @@ class LinearRegression:
 
             # print cost function for monitoring
             if i%(num_iters/10) == 0:
-                cost = (1/(2*len(X)))*np.sum((X@w + b - y)**2)
+                cost = (1/(2*len(X)))*np.sum((X@w + b - y)**2) + (self.alpha/(2*len(X)))*np.sum(w**2)
                 print(f"Cost at iteration {i} is : {cost}")
         
         # append the gain and bias parameter
