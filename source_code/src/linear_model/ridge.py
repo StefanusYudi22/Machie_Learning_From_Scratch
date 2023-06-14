@@ -98,12 +98,12 @@ class Ridge(LinearRegression):
                 if no intercept and n+1 shape with intercept
 
         """
-        n_features = X.shape[1]
+        n_data, n_features = X.shape
 
         # if the model require intercept
         if self.fit_intercept:
             # Create Design Matrix
-            A = np.column_stack((X, np.ones(n_features)))
+            A = np.column_stack((X, np.ones(n_data)))
             alpha_I = self.alpha * np.identity(n_features+1)
             alpha_I[-1,-1] = 0.0
 

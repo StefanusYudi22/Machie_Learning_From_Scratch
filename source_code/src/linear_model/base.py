@@ -113,12 +113,12 @@ class LinearRegression:
                 if no intercept and n+1 shape with intercept
 
         """
-        n_features = X.shape[1]
+        n_data = X.shape[0]
 
         # if the model require intercept
         if self.fit_intercept:
             # Create Design Matrix
-            A = np.column_stack((X, np.ones(n_features)))
+            A = np.column_stack((X, np.ones(n_data)))
         # els if the model don;t require intercept
         else :
             A = X
