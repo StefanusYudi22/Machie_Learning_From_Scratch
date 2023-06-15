@@ -1,5 +1,5 @@
-from ._classes import DecisionTreeClassifier
-from ._classes import DecisionTreeRegressor
+from .classes import DecisionTreeClassifier
+from .classes import DecisionTreeRegressor
 
 __all__ = [
     "DecisionTreeClassifier",

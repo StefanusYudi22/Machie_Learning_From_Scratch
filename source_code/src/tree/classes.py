@@ -239,6 +239,106 @@ class BaseDecisionTree:
         self.min_impurity_decrease = min_impurity_decrease
         self.alpha = alpha
 
+    def fit(self,
+            X : np.array,
+            y : np.array) -> None :
+        """Fitting function for decisiont tree
+
+        Args:
+            X (np.array) (n,k) :
+                Data input with size of n data point
+                and k number of feature
+            y (np.array) (,n): 
+                Target data with size of n data point
+        """
+        # Pass the data by value
+        X = np.array(X).copy()
+        y = np.array(y).copy()
+
+        # Extract the data shape
+        self.n_samples, self.n_features = X.shape
+
+        # Grow tree
+        self.tree_ = self._grow_tree(X, y)
+
+        # Prune tree
+        self._prune_tree()
+
+    # grow tree until it cannot grow anymore
+    def _grow_tree(self, X : np.array, y : np.array, depth : int = 0):
+        """Method to create branch from a node
+
+        Args:
+            X (np.array) (s, k):
+                Data train assigned to the node with s count of
+                data point and k number of feature
+            
+            y (np.array) (,s):
+                Data label assigned to the node with s count of 
+                data point
+
+            depth (int, optional):
+                The depth of the node 0 for the first depth node
+                n for the deepest node. Defaults to 0.
+
+        Returns:
+            Tree:
+                return Tree object
+        """
+        # create node (whether it's internal or leaves)
+
+        # calculate the node impurity
+        node_impurity = self._impurity_evaluation(y)
+
+        # calculate the node representation value
+        # _calculate_average_vote for regression
+        # _calculate_majority_vote for classification
+        node_value = self._leaf_value_calculation(y)
+
+        # create the node object
+        node = Tree(
+            value = node_value,
+            impurity = node_impurity,
+            is_leaf = True,
+            n_samples = len(y)
+        )
+
+        # split recursively until maximum depth is reached
+        # if max_depth set to None
+        if self.max_depth is None:
+            cond = True
+        # else make cond false after the node depth
+        # larger than the max_depth
+        else:
+            cond = depth < self.max_depth
+
+        # if the max depth not reached
+        if cond:
+            # Find the best split
+            feature_i, threshold_i = self._best_split(X, y)
+
+            if feature_i is not None:
+                # Split the data
+                data = np.column_stack((X, y))
+                data_left, data_right = _split_data(data = data,
+                                                    feature = feature_i,
+                                                    threshold = threshold_i)
+                
+                # Extract X and y
+                X_left = data_left[:, :self.n_features]
+                y_left = data_left[:, self.n_features:]
+                X_right = data_right[:, :self.n_features]
+                y_right = data_right[:, self.n_features:]
+
+                # Grow the tree
+                node.feature = feature_i
+                node.threshold = threshold_i
+                node.children_left = self._grow_tree(X_left, y_left, depth+1)
+                node.children_right = self._grow_tree(X_right, y_right, depth+1)
+                node.is_leaf = False
+
+        return node
+    
     def _best_split(self, X, y):
         """
         Find the best split for a node
@@ -345,54 +445,6 @@ class BaseDecisionTree:
 
         return impurity_decrease        
 
-    # grow tree until it cannot grow anymore
-    def _grow_tree(self, X, y, depth=0):
-        """
-        Build a decision tree by recursively finding the best split
-        """
-        # Create node (whether it's internal or leaves)
-        node_impurity = self._impurity_evaluation(y)
-        node_value = self._leaf_value_calculation(y)
-        node = Tree(
-            value = node_value,
-            impurity = node_impurity,
-            is_leaf = True,
-            n_samples = len(y)
-        )
-
-        # Split recursively until maximum depth is reached
-        if self.max_depth is None:
-            cond = True
-        else:
-            cond = depth < self.max_depth
-
-        # if the max depth not reached
-        if cond:
-            # Find the best split
-            feature_i, threshold_i = self._best_split(X, y)
-
-            if feature_i is not None:
-                # Split the data
-                data = np.column_stack((X, y))
-                data_left, data_right = _split_data(data = data,
-                                                    feature = feature_i,
-                                                    threshold = threshold_i)
-                
-                # Extract X and y
-                X_left = data_left[:, :self.n_features]
-                y_left = data_left[:, self.n_features:]
-                X_right = data_right[:, :self.n_features]
-                y_right = data_right[:, self.n_features:]
-
-                # Grow the tree
-                node.feature = feature_i
-                node.threshold = threshold_i
-                node.children_left = self._grow_tree(X_left, y_left, depth+1)
-                node.children_right = self._grow_tree(X_right, y_right, depth+1)
-                node.is_leaf = False
-
-        return node
-
     def _prune_tree(self, tree=None):
         """
         This is a function to prune a tree
@@ -468,31 +520,6 @@ class BaseDecisionTree:
                 branch = tree.children_right
 
             return self._predict_value(X, branch)
-
-    def fit(self,
-            X : np.array,
-            y : np.array) -> None :
-        """Fitting function for decisiont tree
-
-        Args:
-            X (np.array) (n,k) :
-                Data input with size of n data point
-                and k number of feature
-            y (np.array) (,n): 
-                Target data with size of n data point
-        """
-        # Pass the data by value
-        X = np.array(X).copy()
-        y = np.array(y).copy()
-
-        # Extract the data shape
-        self.n_samples, self.n_features = X.shape
-
-        # Grow tree
-        self.tree_ = self._grow_tree(X, y)
-
-        # Prune tree
-        self._prune_tree()
 
     def predict(self, X):
         """
