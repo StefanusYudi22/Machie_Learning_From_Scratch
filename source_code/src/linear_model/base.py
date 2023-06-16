@@ -118,7 +118,7 @@ class LinearRegression:
         # if the model require intercept
         if self.fit_intercept:
             # Create Design Matrix
-            A = np.column_stack((X, np.ones(n_features)))
+            A = np.column_stack((X, np.ones(len(X))))
         # els if the model don;t require intercept
         else :
             A = X
