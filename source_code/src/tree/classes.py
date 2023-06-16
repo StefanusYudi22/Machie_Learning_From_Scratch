@@ -1,21 +1,22 @@
 """
 This module gathers tree-based methods
 """
-
 import numpy as np
 
 from . import criterion
 
-
-# =============================================================================
-# Types and constants
-# =============================================================================
+# Dictionary for mapping CLASIFICATION CRITERIA
+# store a function using key : value pair
+# usage example : CRITERIA_CLF["gini"](argument)
 CRITERIA_CLF = {
     "gini": criterion.Gini,
     "log_loss": criterion.Log_Loss,
     "entropy": criterion.Entropy
 }
 
+# Dictionary for mapping REGRESSION CRITERIA
+# store a function using key : value pair
+# usage example : CRITERIA_REG["squared_error"](argument)
 CRITERIA_REG = {
     "squared_error": criterion.MSE,
     "absolute_error": criterion.MAE
@@ -50,15 +51,31 @@ def _split_data(data : np.array, feature : int, threshold : float) -> np.array:
         data_right (np.array) (n-k, m):
             matrix with defined feature > threshold
     """
+    # create binary array
     ind_left = data[:, feature] <= threshold
+
+    # filter left data with binary array True
     data_left = data[ind_left]
+
+    # filter right data with negation
+    # of binary array
     data_right = data[~ind_left]
 
     return data_left, data_right
 
-def _generate_possible_split(data):
-    """
-    Generate possible split threshold
+def _generate_possible_split(data : np.array) -> np.array:
+    """Generate possible split threshold for 
+       one feature using unique value from
+       the feature
+
+    Args:
+        data (np.array) (n,):
+            Full data of one feature from 
+            train data 
+
+    Returns:
+        np.array:
+            array of possible split threshold 
     """
     # Copy data
     data = data.copy()
@@ -66,38 +83,26 @@ def _generate_possible_split(data):
     # Extract the unique value
     unique_val = np.unique(data)
 
-    # Extract shape of unique_val
-    m = len(unique_val)
-
-    # Sort data
+    # Sort the unique value
     unique_val.sort()
 
-    # Initialize threshold
-    threshold = np.zeros(m-1)
+    # calculate the possible threshold
+    thresholds = (unique_val[:-1] + unique_val[1:])/2
 
-    # Create the possible split
-    for i in range(m-1):
-        val_1 = unique_val[i]
-        val_2 = unique_val[i+1]
+    return thresholds
 
-        threshold[i] = 0.5*(val_1 + val_2)
+def _calculate_majority_vote(y : np.array):
+    """Compute Mode of a node 
 
-    return threshold
+    Args:
+        y (np.array) (n,):
+            Target value of a certain node 
+            with the size on n data 
 
-def _calculate_majority_vote(y):
-    """
-    Calculate the majority vote in the output data
-    Use this if the task is classification
-
-    Parameter
-    ---------
-    y : {array-like} of shape (n_samples,)
-        The output samples data
-
-    Return
-    ------
-    y_pred : int or str
-        The most common class
+    Returns:
+        Any (single value): 
+            Return string or int depend on the
+            target value used
     """
     # Extract output
     vals, counts = np.unique(y, return_counts = True)
@@ -108,20 +113,17 @@ def _calculate_majority_vote(y):
 
     return y_pred
 
-def _calculate_average_vote(y):
-    """
-    Calculate the average vote in the output data
-    Use this if the task is regression
+def _calculate_average_vote(y : np.array) -> float:
+    """Compute Mean of a node 
 
-    Parameter
-    ---------
-    y : {array-like} of shape (n_samples,)
-        The output samples data
+    Args:
+        y (np.array) (n,):
+            Target value of a certain node 
+            with the size on n data 
 
-    Return
-    ------
-    y_pred : int or str
-        The average of the output
+    Returns:
+        float : 
+        Mean value of the node
     """
     y_pred = np.mean(y)
     return y_pred
@@ -166,47 +168,44 @@ def _to_string(tree, indent="|   "):
 
 
 class Tree:
-    """
-    Object-based representation of a binary decision tree.
-
-    Parameters
-    ----------
-    feature : str, default=None
-        Node feeature to split on
-
-    threshold : float, default=None
-        Threshold for the internal node i
-
-    value : float, default=None
-        Containts the constant prediction value of each node
-
-    impurity : float, default=None
-        Holds the impurity (i.e., the value of the splitting criterion)
-        at node i
-
-    children_left : Tree object, default=None
-        Handles the case where X[:, feature[i]] <= threshold[i]
-
-    children_right : Tree object, default=None
-        Handles the case where X[:, feature[i]] > threshold[i]
-
-    is_leaf : bool, deafult=False
-        Whether the current node is a leaf or not
-
-    n_samples : int, default=None
-        The number of samples in current node
-    """
     def __init__(
         self,
-        feature=None,
-        threshold=None,
-        value=None,
-        impurity=None,
-        children_left=None,
-        children_right=None,
-        is_leaf=False,
-        n_samples=None
+        feature : str = None,
+        threshold : float = None,
+        value : float = None,
+        impurity : float = None,
+        children_left = None,
+        children_right = None,
+        is_leaf : bool = False,
+        n_samples : int = None
     ):
+        """Class for storing information of a node in Decision Tree
+
+        Args:
+            feature (str, optional): 
+                Node feeature to split on. Defaults to None.
+
+            threshold (float, optional):
+                Threshold for the internal node i. Defaults to None.
+
+            value (float, optional):
+                Containts the constant prediction value of each node. Defaults to None.
+
+            impurity (float, optional):
+                Holds the impurity (i.e., the value of the splitting criterion) at node i. Defaults to None.
+
+            children_left (Tree, optional):
+                Handles the case where X[:, feature[i]] <= threshold[i]. Defaults to None.
+
+            children_right (Tree, optional):
+                Handles the case where X[:, feature[i]] > threshold[i]. Defaults to None.
+
+            is_leaf (bool, optional):
+                Whether the current node is a leaf or not. Defaults to False.
+
+            n_samples (int, optional):
+                The number of samples in current node. Defaults to None.
+        """
         self.feature = feature
         self.threshold = threshold
         self.value = value
@@ -239,11 +238,133 @@ class BaseDecisionTree:
         self.min_impurity_decrease = min_impurity_decrease
         self.alpha = alpha
 
-    # 
-    def _best_split(self, X, y):
+    def fit(self,
+            X : np.array,
+            y : np.array) -> None :
+        """Fitting function for decisiont tree
+
+        Args:
+            X (np.array) (n,k) :
+                Data input with size of n data point
+                and k number of feature
+            y (np.array) (,n): 
+                Target data with size of n data point
         """
-        Find the best split for a node
+        # Pass the data by value
+        X = np.array(X).copy()
+        y = np.array(y).copy()
+
+        # Extract the data shape
+        self.n_samples, self.n_features = X.shape
+
+        # Grow tree
+        self.tree_ = self._grow_tree(X, y)
+
+        # Prune tree
+        self._prune_tree()
+
+    # grow tree until it cannot grow anymore
+    def _grow_tree(self, X : np.array, y : np.array, depth : int = 0):
+        """Method to create branch from a node
+
+        Args:
+            X (np.array) (s, k):
+                Data train assigned to the node with s count of
+                data point and k number of feature
+            
+            y (np.array) (,s):
+                Data label assigned to the node with s count of 
+                data point
+
+            depth (int, optional):
+                The depth of the node 0 for the first depth node
+                n for the deepest node. Defaults to 0.
+
+        Returns:
+            Tree:
+                return Tree object
         """
+        # create node (whether it's internal or leaves)
+
+        # calculate the node impurity
+        node_impurity = self._impurity_evaluation(y)
+
+        # calculate the node representation value
+        # _calculate_average_vote for regression
+        # _calculate_majority_vote for classification
+        node_value = self._leaf_value_calculation(y)
+
+        # create the node object
+        node = Tree(
+            value = node_value,
+            impurity = node_impurity,
+            is_leaf = True,
+            n_samples = len(y)
+        )
+
+        # split recursively until maximum depth is reached
+        # if max_depth set to None
+        if self.max_depth is None:
+            cond = True
+        # else make cond false after the node depth
+        # larger than the max_depth
+        else:
+            cond = depth < self.max_depth
+
+        # if the max depth not reached
+        if cond:
+            # Find the best feature and feature threshold
+            # for splitting the tree
+            feature_i, threshold_i = self._best_split(X, y)
+
+            if feature_i is not None:
+                # Split the data
+                data = np.column_stack((X, y))
+                data_left, data_right = _split_data(data = data,
+                                                    feature = feature_i,
+                                                    threshold = threshold_i)
+                
+                # Extract X and y
+                X_left = data_left[:, :self.n_features]
+                y_left = data_left[:, self.n_features:]
+                X_right = data_right[:, :self.n_features]
+                y_right = data_right[:, self.n_features:]
+
+                # Register attribut to the tree
+                node.feature = feature_i
+                node.threshold = threshold_i
+                node.is_leaf = False
+
+                # Grow the tree
+                node.children_left = self._grow_tree(X_left, y_left, depth+1)
+                node.children_right = self._grow_tree(X_right, y_right, depth+1)
+
+
+        return node
+    
+    def _best_split(self,
+                    X : np.array,
+                    y : np.array) -> tuple((int, float)) :
+        """Find the best split for a node
+
+        Args:
+            X (np.array) (s,k):
+                Data train assigned to the node with s count of
+                data point and k number of feature
+
+            y (np.array) (,s):
+                Data label assigned to the node with s count of 
+                data point
+
+        Returns:
+            int :
+                best feature index for splitting node
+
+            float : 
+                best threshold for the best feature
+                for splitting the node
+        """
+
         # Need at least min_samples_split to split a node
         m = len(y)
         if m < self.min_samples_split:
@@ -253,20 +374,21 @@ class BaseDecisionTree:
         parent = np.column_stack((X, y))
         best_gain = 0.0
         best_feature, best_threshold = None, None
+
         # looping over feature
         for feature_i in range(self.n_features):
             # Extract data of selected feature
             X_i = X[:, feature_i]
 
             # Find the possible split threshold
-            threshold = _generate_possible_split(data = X_i)
+            thresholds = _generate_possible_split(data = X_i)
 
             # Iterate over threshold to find the best split
-            for i in range(len(threshold)):
+            for threshold in thresholds:
                 # Split the parent
                 left_children, right_children = _split_data(data = parent,
                                                             feature = feature_i,
-                                                            threshold = threshold[i])
+                                                            threshold = threshold)
                 
                 # Extract the children's output
                 left_y = left_children[:, self.n_features:]
@@ -283,7 +405,7 @@ class BaseDecisionTree:
                     if current_gain > best_gain:
                         best_gain = current_gain
                         best_feature = feature_i
-                        best_threshold = threshold[i]
+                        best_threshold = threshold
 
         if best_gain >= self.min_impurity_decrease:
             return best_feature, best_threshold
@@ -345,54 +467,6 @@ class BaseDecisionTree:
         impurity_decrease *= (N_T/N)
 
         return impurity_decrease        
-
-    # grow tree until it cannot grow anymore
-    def _grow_tree(self, X, y, depth=0):
-        """
-        Build a decision tree by recursively finding the best split
-        """
-        # Create node (whether it's internal or leaves)
-        node_impurity = self._impurity_evaluation(y)
-        node_value = self._leaf_value_calculation(y)
-        node = Tree(
-            value = node_value,
-            impurity = node_impurity,
-            is_leaf = True,
-            n_samples = len(y)
-        )
-
-        # Split recursively until maximum depth is reached
-        if self.max_depth is None:
-            cond = True
-        else:
-            cond = depth < self.max_depth
-
-        # if the max depth not reached
-        if cond:
-            # Find the best split
-            feature_i, threshold_i = self._best_split(X, y)
-
-            if feature_i is not None:
-                # Split the data
-                data = np.column_stack((X, y))
-                data_left, data_right = _split_data(data = data,
-                                                    feature = feature_i,
-                                                    threshold = threshold_i)
-                
-                # Extract X and y
-                X_left = data_left[:, :self.n_features]
-                y_left = data_left[:, self.n_features:]
-                X_right = data_right[:, :self.n_features]
-                y_right = data_right[:, self.n_features:]
-
-                # Grow the tree
-                node.feature = feature_i
-                node.threshold = threshold_i
-                node.children_left = self._grow_tree(X_left, y_left, depth+1)
-                node.children_right = self._grow_tree(X_right, y_right, depth+1)
-                node.is_leaf = False
-
-        return node
 
     def _prune_tree(self, tree=None):
         """
@@ -469,25 +543,6 @@ class BaseDecisionTree:
                 branch = tree.children_right
 
             return self._predict_value(X, branch)
-
-    def fit(self, X, y):
-        """
-        Build a decision tree using CART algorithm
-        1. Grow the tree
-        2. Prune the tree
-        """
-        # Convert the input
-        X = np.array(X).copy()
-        y = np.array(y).copy()
-
-        # Extract the data shape
-        self.n_samples, self.n_features = X.shape
-
-        # Grow tree
-        self.tree_ = self._grow_tree(X, y)
-
-        # Prune tree
-        self._prune_tree()
 
     def predict(self, X):
         """
