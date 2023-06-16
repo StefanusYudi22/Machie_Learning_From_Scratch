@@ -2,7 +2,6 @@
 This module gathers tree-based methods
 """
 import numpy as np
-from typing import Any
 
 from . import criterion
 
@@ -92,7 +91,7 @@ def _generate_possible_split(data : np.array) -> np.array:
 
     return thresholds
 
-def _calculate_majority_vote(y : np.array) -> Any:
+def _calculate_majority_vote(y : np.array):
     """Compute Mode of a node 
 
     Args:
@@ -314,7 +313,8 @@ class BaseDecisionTree:
 
         # if the max depth not reached
         if cond:
-            # Find the best split
+            # Find the best feature and feature threshold
+            # for splitting the tree
             feature_i, threshold_i = self._best_split(X, y)
 
             if feature_i is not None:
@@ -330,19 +330,41 @@ class BaseDecisionTree:
                 X_right = data_right[:, :self.n_features]
                 y_right = data_right[:, self.n_features:]
 
-                # Grow the tree
+                # Register attribut to the tree
                 node.feature = feature_i
                 node.threshold = threshold_i
+                node.is_leaf = False
+
+                # Grow the tree
                 node.children_left = self._grow_tree(X_left, y_left, depth+1)
                 node.children_right = self._grow_tree(X_right, y_right, depth+1)
-                node.is_leaf = False
+
 
         return node
     
-    def _best_split(self, X, y):
+    def _best_split(self,
+                    X : np.array,
+                    y : np.array) -> tuple((int, float)) :
+        """Find the best split for a node
+
+        Args:
+            X (np.array) (s,k):
+                Data train assigned to the node with s count of
+                data point and k number of feature
+
+            y (np.array) (,s):
+                Data label assigned to the node with s count of 
+                data point
+
+        Returns:
+            int :
+                best feature index for splitting node
+
+            float : 
+                best threshold for the best feature
+                for splitting the node
         """
-        Find the best split for a node
-        """
+
         # Need at least min_samples_split to split a node
         m = len(y)
         if m < self.min_samples_split:
@@ -352,20 +374,21 @@ class BaseDecisionTree:
         parent = np.column_stack((X, y))
         best_gain = 0.0
         best_feature, best_threshold = None, None
+
         # looping over feature
         for feature_i in range(self.n_features):
             # Extract data of selected feature
             X_i = X[:, feature_i]
 
             # Find the possible split threshold
-            threshold = _generate_possible_split(data = X_i)
+            thresholds = _generate_possible_split(data = X_i)
 
             # Iterate over threshold to find the best split
-            for i in range(len(threshold)):
+            for threshold in thresholds:
                 # Split the parent
                 left_children, right_children = _split_data(data = parent,
                                                             feature = feature_i,
-                                                            threshold = threshold[i])
+                                                            threshold = threshold)
                 
                 # Extract the children's output
                 left_y = left_children[:, self.n_features:]
@@ -382,7 +405,7 @@ class BaseDecisionTree:
                     if current_gain > best_gain:
                         best_gain = current_gain
                         best_feature = feature_i
-                        best_threshold = threshold[i]
+                        best_threshold = threshold
 
         if best_gain >= self.min_impurity_decrease:
             return best_feature, best_threshold
