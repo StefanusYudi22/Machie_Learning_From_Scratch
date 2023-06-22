@@ -24,19 +24,15 @@ def _euclidean_distance(point_1, point_2):
 
     return dist
 
-def _generate_random_seed(random_state):
-    """
-    Generate the random seed
+def _generate_random_seed(random_state : int) -> int:
+    """Generate random seed
 
-    Parameters
-    -----------
-    random_state : int
-        The condition of random_state {`None` or `int`}
-
-    Returns
-    -------
-    seed : int
-        The random seed
+    Args:
+        random_state (int):
+            random_state for reproducibility
+    Returns:
+        int:
+            interget for random seed
     """
     if random_state is None:
         seed = np.random.randint(0, MAX_INT)
@@ -72,11 +68,11 @@ class KMeans:
     """
     def __init__(
         self,
-        n_clusters=8,
-        init="k-means++",
-        max_iter=300,
-        tol=1e-4,
-        random_state=None
+        n_clusters : int = 8,
+        init : str = "k-means++",
+        max_iter : int = 300,
+        tol : float = 1e-4,
+        random_state = None
     ):
         self.n_clusters = n_clusters
         self.init = init
@@ -84,7 +80,7 @@ class KMeans:
         self.tol = tol
         self.random_state = random_state
 
-    def _init_cluster_centers(self, X):
+    def _init_cluster_centers(self, X : np.array):
         """
         Initialize centroids / cluster centers
 
@@ -279,7 +275,7 @@ class KMeans:
 
         return inertia
 
-    def fit(self, X):
+    def fit(self, X : np.array):
         """
         Compute k-means clustering
 
