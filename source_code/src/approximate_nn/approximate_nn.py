@@ -50,7 +50,8 @@ class ApproximateNearestNeighbor:
     def __init__(self,
                  n_tree : str,
                  min_size_split : int = 10,
-                 distance_type : str = "eucledian"):
+                 distance_type : str = "eucledian",
+                 random_state : int = 666):
         """Initialization of ANN Object
 
         Args:
@@ -64,6 +65,7 @@ class ApproximateNearestNeighbor:
         self.min_size_split = min_size_split
         self.distance_type = distance_type
         self.n_tree = n_tree
+        self.random_state = random_state
 
     def fit(self,
             X : np.array,
@@ -172,8 +174,8 @@ class ApproximateNearestNeighbor:
         return node
     
     def node_split(self,
-                         X : np.array,
-                         y :np.array) -> np.array:
+                   X : np.array,
+                   y :np.array) -> np.array:
         """Split node into children_left and children_right
 
         Args:
@@ -201,6 +203,7 @@ class ApproximateNearestNeighbor:
         """
 
         # pick 2 random data point from data using
+        np.random.seed(self.random_state)
         random_index = np.random.randint(low=0, high=len(X)-1, size=2)
         random_point = X[random_index]
 

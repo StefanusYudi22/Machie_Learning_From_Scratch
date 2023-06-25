@@ -2,4 +2,7 @@ ml_from_scratch/
 __pycache__
 Experiment.ipynb
 model/
-data/processed/
+X_indobert.pkl
+y_indobert.pkl
+word_embedding_indobert.pkl
+word_embedding_nnlm.pkl
