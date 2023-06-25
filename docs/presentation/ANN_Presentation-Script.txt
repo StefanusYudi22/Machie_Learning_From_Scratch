@@ -1,0 +1,53 @@
+Halo nama Saya stefanus yudi irwan disini saya akan menerangkan mengenai algoritma yang cukup populer yaitu approximate nearest neighbor. 
+
+Approximate nearest neighbor adalah algoritma searching yang diciptakan untuk menangani lambatnya algorima brute force ketika proses searching item yang similar. Algortima ini banyak digunakan pada database vector seperti redis / qdrant untuk mencari nearest neighbor dari item yang kita inputkan. Item disini bisa bermacam macam seperti gambar, artikel / text, dll yang dapat direpresentasikan melalui sebuah vector. Pada kesempatan kali ini saya akan mempresentasikan pemahaman saya mengenai algoritma ini ANN yang mana digunakan oleh SPOTIFY untuk merekomendasikan item lagu untuk penggunanya, nah SPOTIFY menggunakan library ANNOY yang dibuat menggunakan bahasa C, namun disini saya akan menggunakan bahasa pemrograman python untuk membuat algoritma annot ini. 
+
+Singkatnya algoritma ANN ini membagi data train menjadi beberapa bagian terlebih dahulu secara random, kemudian pencarian difokuskan pada bagian bagian kecil ini saja. Nantinya untuk menentukan item yang paling similar akan digunakan perhitungan distance seperti Eucledian, Cosine-Similarity, dan lain sebagainya.
+
+-----------
+
+Outline dari presentasi saya kali ini akan dibagi menjadi 3 ya, yang pertama saya akan menerangkan secara singkat bagaimana algortima ANN ini bekerja, kemudian yang kedua saya akan menerangkan limitasi dari algoritma ANN ini salah satu cara untuk mengatasi limitasi tersebut, kemudian yang terakhir saya akan menerangkan library ANN from scratch yang sudah saya buat
+
+-----------
+Masuk ke bagian bagaimana ANN bekerja. Pada intinya ANN bekerja dalam 4 tahap, yang pertama adalah melakukan cluster data training secara random menggunakan hyperplane, kemudian yang kedua ketika kita ingin melakukan pencarian, ANN akan mencari menggunakan hiperplane yang sudah dibuat ketika melakukan random cluster, yang ketiga menghitung distance antara data yang kita inputkan / Test data dengan data yang ada di cluster terkecil yang disebut leaf node, dan yang terakhir merangking item item menggunakan distance
+
+Di tahap pertama ANN akan melakukan cluster, misalnya distribusi data kita seperti pada gambar ini, pada langkah awal 2 titik dari data akan dipilih secara random dan dihitung titik tengahnya, setelah itu akan dibuat hyperplane yang tegak lurus dengan vektor antara titik pertama dan kedua yang melewati titik tengahnya. Pada tahap ini data train awal yang kita miliki akan dibagi menjadi 2 yaitu data train yang ini yang bisa kita sebut sebagai children_left misalnya, dan data yang ini yang bisa kita sebut sebagai children right. 
+
+Proses ini diulang berkali kali di setiap children_right dan children_left hingga menghasilkan children_right dan children_left yang lainnya. Proses ini akan berhenti apabila minimum size split sudah tercapai, minimum size split ini apa?, minimum size split ini adalah cacah data point yang ada di suatu cluster, jadi katakan kita mendefinisikan min size split bernilai 100, maka apabila ada cluster yang hanya memiliki data 100 atau kurang maka tidak akan di split lagi, dan kita menyebut cluster tersebut sebagai "leaf node"
+
+Nah nantinya struktur data train yang kita miliki akan seperti ini, disini bisa kita lihat bahwa data terus dibagi bagi secara biner sampai min size splitnya bernilai 10, jadi node yang memiliki data point 10 atau kurang sudah tidak akan dibagi lagi dan menjadi leaf node.
+
+-------------
+Kemudian setelah data train dipartisi, langkah selanjutnya dilakukan apabila kita ingin mencar nearest neighbor dari data yang kita inputkan ke model, dalam hal ini, ketika kita ingin melakukan predict. Misalkan kita memiliki data test yang ini, dengan tanda silang merah, maka ANN akan memilih leafnode dimana data test yang kita inputkan ini berada, bagaimana ANN melakukan hal itu, yaitu dengan melakukan kalkulasi antara data train yang kita inputkan dengan hiperplane yang sudah dibuat.
+
+Misalnya ini hiperplane yang pertama, nah karena data test yang kita miliki posisinya disini maka ANN akan mengarahkan si pencarian untuk masuk ke children yang ini saja, children yang lain sudah tidak diperhitungkan, kemudian posisi data test dilihat dengan menggunakan hyperplane yang berikutnya, misalnya yang ini, ternyata posisinya disini, berarti children yang ini sudah tidak akan diperhitungkan lagi. naha proses ini berlanjut sampai hyperplane terakhir yang menjadi pemisah antara leaf node.
+
+Nah kalau digambarkan menggunakan decision tree ini, data test yang kita punya akan diarahkan untuk masuk ke leaf node dimana data test tersebut berada dengan menggunakan hyperplane dari root node sampai parent node dari leafnode tersebut. Misalnya data test yang kita miliki tadi akan sampai di leafnode yang ini dimana leaf node ini berisi 7 data point.
+
+-------------
+Nah setelah leaf node ditemukan maka tinggal dihitung saja jarak antara data test dengan neighbor-neighbornya. bisa dilihan kan disini bahwa data yang dihitung hanya yang berada di dalam leaf nodenya saja, jadi yang berada di luar leafnode ini tidak akan dihitung. Hal ini yang membuat ANN bisa mempercepat pencarian neighbor dari data test yang kita masukkan. Namun akan ada kekurangan dari metode yang seperti ini, ini akan kita bahas di bagian limitasi nanti
+
+------------- 
+Tahap terakhir setelah kita menghitung distance yaitu merangking dari yang paling dekat dengan data test hingga yang paling jauh, nah value dari rangkingnya ini harus disesuaikan lebih dahulu dengan tipe algoritma distance yang kita gunakan sebelumnya ya ketika menghitung distance. Tidak serta merta kita bisa meranking dari yang value distancenya lebih kecil hingga lebih besar, semisal kita menggunakan cosine distance hal ini akan kebalik ya mustinya merangkin dari value yang paling besar hingga yang paling kecil, atau kalau kita menggunakan eucledian rangkingnya dari value yang paling kecil hingga paling besar jadi diperhatikan kembali perhitungan rangkingnya berdasarkan algoritma distancenya
+--------------
+
+Nah sekarang kita akan membahas mengenai kelemahan dari ANN itu sendiri, seperti kita lihat sebelumnya ANN bisa mempercepat pencarian dengan hanya menghitung distance dari data data yang ada di leaf node. Semisal data yang terdekat dengna data test itu berada di luar leaf nodenya, misalnya yang ini, data ini tidak akan dianggap sebagai nearest neighbornya karena tidak ada di leaf_node yang ini, padalah kalau di visualisasikan data ini kan lebih dekat ya dibanding yang ini misalnya. Nah hal ini membuat perhitungan neighbors dari ANN ini tidak lebih baik dari KNN yang bruteforce. namun performance di bagian kecepatan bisa meningkan apabila data yang di search jumlahnya jutaan
+
+Salah satu cara untuk menanggulagi kekurangan ini adalah dengan membuat beberapa decision tree, atau dalam hal ini bisa kita sebut forest, kemudian kita meng-unionkan beberapa leafnode menjadi satu dari masing masing tree structure yang ada. Pada gambar kita bisa melihat bahwa bagian yang diarsir merupakan penggabungan dari beberapa leaf node
+
+Data gabungan dari beberapa leaf node ini yang pada akhirnya akan dihitung distancenya kemudian di ranking, kita bisa melihat bahwa cakupan dari penggunaan forest ini menjadi lebih lebar dibanding hanya menggunakan 1 decision tree. 
+
+Nah sampai disitu saja penjelasan saya tentang limitasi dari model ANN ini dan bagaimana cara mengatasinya, selanjutnya saya akan mererangkan library ANN yang sudah saya buat dari scratch
+
+-------------
+
+Library yang sudah dibuat terbagi menjadi 3 kelas
+yang pertama adalah kelas Node class node ini digunakan untuk menyimpan data, seperti children right dan left, size node, persamaan hyperplane, leaf_data, label_data dan lain lain, akan kita lihat nanti di algortimanya. 
+Kemudian ada kelas ANN itu sendiri, kelas ini digunakan untuk fitting data dengan membuat data struktur tadi ya berupa tree atau forest, dan melakukan searching / mencari similarity dari data yang ada. Terakhir saya buat disini KNN algortima juga yang menggunakan bruteforsce sebagai bahan perbandingan dengan ANN. 
+
+untuk link source codenya saya sisipkan disini, saya tidak akan bahas satu per-satu secara detail mengenai inisialisasi dan method di masing masing class, akan makan waktu terlalu lama. 
+
+--------------
+
+Oke langsung saja kita masuk ke pembahasan perbandingan antara ANN dan KNN, disini saya akan mendemonstrasikan langsung penggunaan library ANN from scratch yang sudah dibuat. Saya menggunakan format notebook supaya lebih mudah melakukan komparasinya. disini juga saya akan menggunakan bantuan data berupa kata dan masing masing embeddingnya dengan ukuran 50 fitur dari model pretrain khusus bahasa indonesia. Fitur embedding ini yang nantinya akan menjadi bahan dari model untuk melakukan searching
+ 
